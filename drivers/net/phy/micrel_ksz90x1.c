@@ -107,10 +107,11 @@ static const struct ksz90x1_reg_field ksz9031_clk_grp[] = {
 };
 
 static int ksz90x1_of_config_group(struct phy_device *phydev,
-				   struct ksz90x1_ofcfg *ofcfg)
+				   struct ksz90x1_ofcfg *ofcfg,
+				   int ps_to_regval)
 {
+	struct udevice *dev = phydev->dev;
 	struct phy_driver *drv = phydev->drv;
-	const int ps_to_regval = 60;
 	int val[4];
 	int i, changed = 0, offset, max;
 	u16 regval = 0;
@@ -119,9 +120,12 @@ static int ksz90x1_of_config_group(struct phy_device *phydev,
 	if (!drv || !drv->writeext)
 		return -EOPNOTSUPP;
 
-	node = phy_get_ofnode(phydev);
-	if (!ofnode_valid(node))
-		return -EINVAL;
+	/* Look for a PHY node under the Ethernet node */
+	node = dev_read_subnode(dev, "ethernet-phy");
+	if (!ofnode_valid(node)) {
+		/* No node found, look in the Ethernet node */
+		node = dev_ofnode(dev);
+	}
 
 	for (i = 0; i < ofcfg->grpsz; i++) {
 		val[i] = ofnode_read_u32_default(node, ofcfg->grp[i].name, ~0);
@@ -132,8 +136,8 @@ static int ksz90x1_of_config_group(struct phy_device *phydev,
 		} else {
 			changed = 1;	/* Value was changed in OF */
 			/* Calculate the register value and fix corner cases */
-			if (val[i] > ps_to_regval * 0xf) {
-				max = (1 << ofcfg->grp[i].size) - 1;
+			max = (1 << ofcfg->grp[i].size) - 1;
+			if (val[i] > ps_to_regval * max) {
 				regval |= max << offset;
 			} else {
 				regval |= (val[i] / ps_to_regval) << offset;
@@ -157,7 +161,8 @@ static int ksz9021_of_config(struct phy_device *phydev)
 	int i, ret = 0;
 
 	for (i = 0; i < ARRAY_SIZE(ofcfg); i++) {
-		ret = ksz90x1_of_config_group(phydev, &(ofcfg[i]));
+		ret = ksz90x1_of_config_group(phydev, &ofcfg[i],
+					      KSZ9021_PS_TO_REG);
 		if (ret)
 			return ret;
 	}
@@ -176,7 +181,8 @@ static int ksz9031_of_config(struct phy_device *phydev)
 	int i, ret = 0;
 
 	for (i = 0; i < ARRAY_SIZE(ofcfg); i++) {
-		ret = ksz90x1_of_config_group(phydev, &(ofcfg[i]));
+		ret = ksz90x1_of_config_group(phydev, &ofcfg[i],
+					      KSZ9031_PS_TO_REG);
 		if (ret)
 			return ret;
 	}
@@ -280,7 +286,7 @@ static int ksz9021_config(struct phy_device *phydev)
 static struct phy_driver ksz9021_driver = {
 	.name = "Micrel ksz9021",
 	.uid  = 0x221610,
-	.mask = 0xfffff0,
+	.mask = 0xfffffe,
 	.features = PHY_GBIT_FEATURES,
 	.config = &ksz9021_config,
 	.startup = &ksz90xx_startup,
