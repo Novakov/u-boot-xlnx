@@ -11,11 +11,11 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+#include <linux/stringify.h>
+
 /*
  * High Level Configuration Options
  */
-#define CONFIG_FSL_ELBC
-
 #define CONFIG_BOOT_RETRY_TIME		900
 #define CONFIG_BOOT_RETRY_MIN		30
 #define CONFIG_RESET_TO_RETRY
@@ -241,9 +241,6 @@
  */
 #define CONFIG_SYS_CBSIZE		1024
 #define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
-
-#define CONFIG_SYS_MEMTEST_START	0x00001000
-#define CONFIG_SYS_MEMTEST_END		0x00C00000
 
 #define CONFIG_SYS_LOAD_ADDR		0x100000
 #define CONFIG_LOADS_ECHO

@@ -11,8 +11,10 @@
 
 #include <common.h>
 #ifndef __UBOOT__
+#include <linux/compat.h>
 #include <linux/module.h>
 #endif
+#include <linux/bitops.h>
 #include <linux/mtd/nand.h>
 
 /**

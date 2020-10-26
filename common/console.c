@@ -19,6 +19,7 @@
 #include <exports.h>
 #include <env_internal.h>
 #include <watchdog.h>
+#include <linux/delay.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -228,16 +229,32 @@ static void console_putc(int file, const char c)
 	}
 }
 
-static void console_puts_noserial(int file, const char *s)
+/**
+ * console_puts_select() - Output a string to all console devices
+ *
+ * @file: File number to output to (e,g, stdout, see stdio.h)
+ * @serial_only: true to output only to serial, false to output to everything
+ *	else
+ * @s: String to output
+ */
+static void console_puts_select(int file, bool serial_only, const char *s)
 {
 	int i;
 	struct stdio_dev *dev;
 
 	for (i = 0; i < cd_count[file]; i++) {
+		bool is_serial;
+
 		dev = console_devices[file][i];
-		if (dev->puts != NULL && !console_dev_is_serial(dev))
+		is_serial = console_dev_is_serial(dev);
+		if (dev->puts && serial_only == is_serial)
 			dev->puts(dev, s);
 	}
+}
+
+void console_puts_select_stderr(bool serial_only, const char *s)
+{
+	console_puts_select(stderr, serial_only, s);
 }
 
 static void console_puts(int file, const char *s)
@@ -274,9 +291,9 @@ static inline void console_putc(int file, const char c)
 	stdio_devices[file]->putc(stdio_devices[file], c);
 }
 
-static inline void console_puts_noserial(int file, const char *s)
+void console_puts_select(int file, bool serial_only, const char *s)
 {
-	if (!console_dev_is_serial(stdio_devices[file]))
+	if (serial_only == console_dev_is_serial(stdio_devices[file]))
 		stdio_devices[file]->puts(stdio_devices[file], s);
 }
 
@@ -401,7 +418,7 @@ int getc(void)
 	if (gd->console_in.start) {
 		int ch;
 
-		ch = membuff_getbyte(&gd->console_in);
+		ch = membuff_getbyte((struct membuff *)&gd->console_in);
 		if (ch != -1)
 			return 1;
 	}
@@ -426,7 +443,7 @@ int tstc(void)
 		return 0;
 #ifdef CONFIG_CONSOLE_RECORD
 	if (gd->console_in.start) {
-		if (membuff_peekbyte(&gd->console_in) != -1)
+		if (membuff_peekbyte((struct membuff *)&gd->console_in) != -1)
 			return 1;
 	}
 #endif
@@ -488,7 +505,7 @@ static void print_pre_console_buffer(int flushpoint)
 		puts(buf_out);
 		break;
 	case PRE_CONSOLE_FLUSHPOINT2_EVERYTHING_BUT_SERIAL:
-		console_puts_noserial(stdout, buf_out);
+		console_puts_select(stdout, false, buf_out);
 		break;
 	}
 }
@@ -518,7 +535,7 @@ void putc(const char c)
 		return;
 #ifdef CONFIG_CONSOLE_RECORD
 	if ((gd->flags & GD_FLG_RECORD) && gd->console_out.start)
-		membuff_putbyte(&gd->console_out, c);
+		membuff_putbyte((struct membuff *)&gd->console_out, c);
 #endif
 #ifdef CONFIG_SILENT_CONSOLE
 	if (gd->flags & GD_FLG_SILENT) {
@@ -569,7 +586,7 @@ void puts(const char *s)
 		return;
 #ifdef CONFIG_CONSOLE_RECORD
 	if ((gd->flags & GD_FLG_RECORD) && gd->console_out.start)
-		membuff_put(&gd->console_out, s, strlen(s));
+		membuff_put((struct membuff *)&gd->console_out, s, strlen(s));
 #endif
 #ifdef CONFIG_SILENT_CONSOLE
 	if (gd->flags & GD_FLG_SILENT) {
@@ -602,25 +619,41 @@ int console_record_init(void)
 {
 	int ret;
 
-	ret = membuff_new(&gd->console_out, CONFIG_CONSOLE_RECORD_OUT_SIZE);
+	ret = membuff_new((struct membuff *)&gd->console_out,
+			  CONFIG_CONSOLE_RECORD_OUT_SIZE);
 	if (ret)
 		return ret;
-	ret = membuff_new(&gd->console_in, CONFIG_CONSOLE_RECORD_IN_SIZE);
+	ret = membuff_new((struct membuff *)&gd->console_in,
+			  CONFIG_CONSOLE_RECORD_IN_SIZE);
 
 	return ret;
 }
 
 void console_record_reset(void)
 {
-	membuff_purge(&gd->console_out);
-	membuff_purge(&gd->console_in);
+	membuff_purge((struct membuff *)&gd->console_out);
+	membuff_purge((struct membuff *)&gd->console_in);
 }
 
-void console_record_reset_enable(void)
+int console_record_reset_enable(void)
 {
 	console_record_reset();
 	gd->flags |= GD_FLG_RECORD;
+
+	return 0;
 }
+
+int console_record_readline(char *str, int maxlen)
+{
+	return membuff_readline((struct membuff *)&gd->console_out, str,
+				maxlen, ' ');
+}
+
+int console_record_avail(void)
+{
+	return membuff_avail((struct membuff *)&gd->console_out);
+}
+
 #endif
 
 /* test if ctrl-c was pressed */
@@ -698,7 +731,7 @@ struct stdio_dev *search_device(int flags, const char *name)
 
 	dev = stdio_get_by_name(name);
 #ifdef CONFIG_VIDCONSOLE_AS_LCD
-	if (!dev && !strcmp(name, "lcd"))
+	if (!dev && !strcmp(name, CONFIG_VIDCONSOLE_AS_NAME))
 		dev = stdio_get_by_name("vidconsole");
 #endif
 
@@ -761,7 +794,7 @@ int console_announce_r(void)
 
 	display_options_get_banner(false, buf, sizeof(buf));
 
-	console_puts_noserial(stdout, buf);
+	console_puts_select(stdout, false, buf);
 #endif
 
 	return 0;
@@ -882,8 +915,9 @@ done:
 	stdio_print_current_devices();
 #endif /* CONFIG_SYS_CONSOLE_INFO_QUIET */
 #ifdef CONFIG_VIDCONSOLE_AS_LCD
-	if (strstr(stdoutname, "lcd"))
-		printf("Warning: Please change 'lcd' to 'vidconsole' in stdout/stderr environment vars\n");
+	if (strstr(stdoutname, CONFIG_VIDCONSOLE_AS_NAME))
+		printf("Warning: Please change '%s' to 'vidconsole' in stdout/stderr environment vars\n",
+		       CONFIG_VIDCONSOLE_AS_NAME);
 #endif
 
 #ifdef CONFIG_SYS_CONSOLE_ENV_OVERWRITE

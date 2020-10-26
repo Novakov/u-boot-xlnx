@@ -7,8 +7,10 @@
  */
 
 #include <common.h>
+#include <log.h>
 #include <malloc.h>
 #include <asm/io.h>
+#include <linux/delay.h>
 #include <linux/errno.h>
 #include <nand.h>
 #include <linux/ioport.h>
@@ -1280,7 +1282,7 @@ static const struct udevice_id zynq_nand_dt_ids[] = {
 };
 
 U_BOOT_DRIVER(zynq_nand) = {
-	.name = "zynq-nand",
+	.name = "zynq_nand",
 	.id = UCLASS_MTD,
 	.of_match = zynq_nand_dt_ids,
 	.probe = zynq_nand_probe,

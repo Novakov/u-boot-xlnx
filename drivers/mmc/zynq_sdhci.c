@@ -9,17 +9,21 @@
 #include <common.h>
 #include <dm.h>
 #include <fdtdec.h>
+#include <linux/delay.h>
 #include "mmc_private.h"
+#include <log.h>
+#include <dm/device_compat.h>
+#include <linux/err.h>
 #include <linux/libfdt.h>
 #include <malloc.h>
 #include <sdhci.h>
 #include <zynqmp_tap_delay.h>
 
-#define SDHCI_ARASAN_ITAPDLY_REGISTER	0xF0F8
-#define SDHCI_ARASAN_OTAPDLY_REGISTER	0xF0FC
-#define SDHCI_ITAPDLY_CHGWIN		0x200
-#define SDHCI_ITAPDLY_ENABLE		0x100
-#define SDHCI_OTAPDLY_ENABLE		0x40
+#define SDHCI_ARASAN_ITAPDLY_REGISTER   0xF0F8
+#define SDHCI_ARASAN_OTAPDLY_REGISTER   0xF0FC
+#define SDHCI_ITAPDLY_CHGWIN            0x200
+#define SDHCI_ITAPDLY_ENABLE            0x100
+#define SDHCI_OTAPDLY_ENABLE            0x40
 
 #define SDHCI_TUNING_LOOP_COUNT		40
 #define MMC_BANK2			0x2
@@ -53,7 +57,6 @@ const u32 versal_oclk_phases[] = {0,  60, 48, 0, 48, 72, 90, 36, 60, 90, 0};
 
 static const u8 mode2timing[] = {
 	[MMC_LEGACY] = MMC_TIMING_LEGACY,
-	[SD_LEGACY] = MMC_TIMING_LEGACY,
 	[MMC_HS] = MMC_TIMING_MMC_HS,
 	[SD_HS] = MMC_TIMING_SD_HS,
 	[MMC_HS_52] = MMC_TIMING_UHS_SDR50,
@@ -179,7 +182,7 @@ static int arasan_sdhci_execute_tuning(struct mmc *mmc, u8 opcode)
  * Set the SD Output Clock Tap Delays for Output path
  *
  * @host:		Pointer to the sdhci_host structure.
- * @degrees		The clock phase shift between 0 - 359.
+ * @degrees:		The clock phase shift between 0 - 359.
  * Return: 0 on success and error value on error
  */
 static int sdhci_zynqmp_sdcardclk_set_phase(struct sdhci_host *host,
@@ -235,7 +238,7 @@ static int sdhci_zynqmp_sdcardclk_set_phase(struct sdhci_host *host,
  * Set the SD Input Clock Tap Delays for Input path
  *
  * @host:		Pointer to the sdhci_host structure.
- * @degrees		The clock phase shift between 0 - 359.
+ * @degrees:		The clock phase shift between 0 - 359.
  * Return: 0 on success and error value on error
  */
 static int sdhci_zynqmp_sampleclk_set_phase(struct sdhci_host *host,
@@ -541,7 +544,7 @@ static void arasan_sdhci_set_control_reg(struct sdhci_host *host)
 }
 
 const struct sdhci_ops arasan_ops = {
-	.platform_execute_tuning	= &arasan_sdhci_execute_tuning,
+	.platform_execute_tuning = &arasan_sdhci_execute_tuning,
 	.set_delay = &arasan_sdhci_set_tapdelay,
 	.set_control_reg = &arasan_sdhci_set_control_reg,
 };

@@ -27,8 +27,6 @@
 #define SDRAM_BANK_SIZE			(256 << 20)	/* 256 MB */
 
 /* memtest works on */
-#define CONFIG_SYS_MEMTEST_START	CONFIG_SYS_SDRAM_BASE
-#define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_SDRAM_BASE + 0x5000000)
 #define CONFIG_SYS_LOAD_ADDR		(CONFIG_SYS_SDRAM_BASE + 0x4800000)
 
 /* select serial console configuration */
@@ -47,10 +45,6 @@
 
 #define CONFIG_BOOTBLOCK		"10"
 #define CONFIG_ENV_COMMON_BOOT		"${console} ${meminfo}"
-
-#define CONFIG_SYS_MMC_ENV_DEV		CONFIG_MMC_DEFAULT_DEV
-
-#define CONFIG_ENV_OVERWRITE
 
 /* Tizen - partitions definitions */
 #define PARTS_CSA		"csa-mmc"
@@ -184,10 +178,8 @@
 #define LCD_BPP			LCD_COLOR16
 
 /* LCD */
-#define CONFIG_BMP_16BPP
 #define CONFIG_FB_ADDR		0x52504000
 #define CONFIG_EXYNOS_MIPI_DSIM
-#define CONFIG_VIDEO_BMP_GZIP
 #define CONFIG_SYS_VIDEO_LOGO_MAX_SIZE  ((500 * 160 * 4) + 54)
 
 #endif	/* __CONFIG_H */

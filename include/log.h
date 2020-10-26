@@ -9,8 +9,13 @@
 #ifndef __LOG_H
 #define __LOG_H
 
+#include <stdio.h>
+#include <linker_lists.h>
 #include <dm/uclass-id.h>
+#include <linux/bitops.h>
 #include <linux/list.h>
+
+struct cmd_tbl;
 
 /** Log levels supported, ranging from most to least important */
 enum log_level_t {
@@ -27,6 +32,9 @@ enum log_level_t {
 
 	LOGL_COUNT,
 	LOGL_NONE,
+
+	LOGL_LEVEL_MASK = 0xf,	/* Mask for valid log levels */
+	LOGL_FORCE_DEBUG = 0x10, /* Mask to force output due to LOG_DEBUG */
 
 	LOGL_FIRST = LOGL_EMERG,
 	LOGL_MAX = LOGL_DEBUG_IO,
@@ -49,6 +57,9 @@ enum log_category_t {
 	LOGC_ALLOC,	/* Memory allocation */
 	LOGC_SANDBOX,	/* Related to the sandbox board */
 	LOGC_BLOBLIST,	/* Bloblist */
+	LOGC_DEVRES,	/* Device resources (devres_... functions) */
+	/* Advanced Configuration and Power Interface (ACPI) */
+	LOGC_ACPI,
 
 	LOGC_COUNT,	/* Number of log categories */
 	LOGC_END,	/* Sentinel value for a list of log categories */
@@ -113,11 +124,11 @@ static inline int _log_nop(enum log_category_t cat, enum log_level_t level,
 #define log_io(_fmt...)		log(LOG_CATEGORY, LOGL_DEBUG_IO, ##_fmt)
 #else
 #define _LOG_MAX_LEVEL LOGL_INFO
-#define log_err(_fmt...)	log_nop(LOG_CATEGORY, LOGL_ERR, ##_fmt)
-#define log_warning(_fmt...)	log_nop(LOG_CATEGORY, LOGL_WARNING, ##_fmt)
-#define log_notice(_fmt...)	log_nop(LOG_CATEGORY, LOGL_NOTICE, ##_fmt)
-#define log_info(_fmt...)	log_nop(LOG_CATEGORY, LOGL_INFO, ##_fmt)
-#define log_debug(_fmt...)	log_nop(LOG_CATEGORY, LOGL_DEBUG, ##_fmt)
+#define log_err(_fmt, ...)	printf(_fmt, ##__VA_ARGS__)
+#define log_warning(_fmt, ...)	printf(_fmt, ##__VA_ARGS__)
+#define log_notice(_fmt, ...)	printf(_fmt, ##__VA_ARGS__)
+#define log_info(_fmt, ...)	printf(_fmt, ##__VA_ARGS__)
+#define log_debug(_fmt, ...)	debug(_fmt, ##__VA_ARGS__)
 #define log_content(_fmt...)	log_nop(LOG_CATEGORY, \
 					LOGL_DEBUG_CONTENT, ##_fmt)
 #define log_io(_fmt...)		log_nop(LOG_CATEGORY, LOGL_DEBUG_IO, ##_fmt)
@@ -125,7 +136,7 @@ static inline int _log_nop(enum log_category_t cat, enum log_level_t level,
 
 #if CONFIG_IS_ENABLED(LOG)
 #ifdef LOG_DEBUG
-#define _LOG_DEBUG	1
+#define _LOG_DEBUG	LOGL_FORCE_DEBUG
 #else
 #define _LOG_DEBUG	0
 #endif
@@ -133,9 +144,11 @@ static inline int _log_nop(enum log_category_t cat, enum log_level_t level,
 /* Emit a log record if the level is less that the maximum */
 #define log(_cat, _level, _fmt, _args...) ({ \
 	int _l = _level; \
-	if (CONFIG_IS_ENABLED(LOG) && (_l <= _LOG_MAX_LEVEL || _LOG_DEBUG)) \
-		_log((enum log_category_t)(_cat), _l, __FILE__, __LINE__, \
-		      __func__, \
+	if (CONFIG_IS_ENABLED(LOG) && \
+	    (_LOG_DEBUG != 0 || _l <= _LOG_MAX_LEVEL)) \
+		_log((enum log_category_t)(_cat), \
+		     (enum log_level_t)(_l | _LOG_DEBUG), __FILE__, \
+		     __LINE__, __func__, \
 		      pr_fmt(_fmt), ##_args); \
 	})
 #else
@@ -218,6 +231,20 @@ void __assert_fail(const char *assertion, const char *file, unsigned int line,
 	({ if (!(x) && _DEBUG) \
 		__assert_fail(#x, __FILE__, __LINE__, __func__); })
 
+/*
+ * This one actually gets compiled in even without DEBUG. It doesn't include the
+ * full pathname as it may be huge. Only use this when the user should be
+ * warning, similar to BUG_ON() in linux.
+ *
+ * @return true if assertion succeeded (condition is true), else false
+ */
+#define assert_noisy(x) \
+	({ bool _val = (x); \
+	if (!_val) \
+		__assert_fail(#x, "?", __LINE__, __func__); \
+	_val; \
+	})
+
 #if CONFIG_IS_ENABLED(LOG) && defined(CONFIG_LOG_ERROR_RETURN)
 /*
  * Log an error return value, possibly with a message. Usage:
@@ -257,8 +284,12 @@ void __assert_fail(const char *assertion, const char *file, unsigned int line,
  * Memebers marked as 'allocated' are allocated (e.g. via strdup()) by the log
  * system.
  *
+ * TODO(sjg@chromium.org): Compress this struct down a bit to reduce space, e.g.
+ * a single u32 for cat, level, line and force_debug
+ *
  * @cat: Category, representing a uclass or part of U-Boot
  * @level: Severity level, less severe is higher
+ * @force_debug: Force output of debug
  * @file: Name of file where the log record was generated (not allocated)
  * @line: Line number where the log record was generated
  * @func: Function where the log record was generated (not allocated)
@@ -267,6 +298,7 @@ void __assert_fail(const char *assertion, const char *file, unsigned int line,
 struct log_rec {
 	enum log_category_t cat;
 	enum log_level_t level;
+	bool force_debug;
 	const char *file;
 	int line;
 	const char *func;
@@ -275,10 +307,16 @@ struct log_rec {
 
 struct log_device;
 
+enum log_device_flags {
+	LOGDF_ENABLE		= BIT(0),	/* Device is enabled */
+};
+
 /**
  * struct log_driver - a driver which accepts and processes log records
  *
  * @name: Name of driver
+ * @emit: Method to call to emit a log record via this device
+ * @flags: Initial value for flags (use LOGDF_ENABLE to enable on start-up)
  */
 struct log_driver {
 	const char *name;
@@ -289,6 +327,7 @@ struct log_driver {
 	 * for processing. The filter is checked before calling this function.
 	 */
 	int (*emit)(struct log_device *ldev, struct log_rec *rec);
+	unsigned short flags;
 };
 
 /**
@@ -301,12 +340,14 @@ struct log_driver {
  * @next_filter_num: Seqence number of next filter filter added (0=no filters
  *	yet). This increments with each new filter on the device, but never
  *	decrements
+ * @flags: Flags for this filter (enum log_device_flags)
  * @drv: Pointer to driver for this device
  * @filter_head: List of filters for this device
  * @sibling_node: Next device in the list of all devices
  */
 struct log_device {
-	int next_filter_num;
+	unsigned short next_filter_num;
+	unsigned short flags;
 	struct log_driver *drv;
 	struct list_head filter_head;
 	struct list_head sibling_node;
@@ -346,6 +387,10 @@ struct log_filter {
 
 #define LOG_DRIVER(_name) \
 	ll_entry_declare(struct log_driver, _name, log_driver)
+
+/* Get a pointer to a given driver */
+#define LOG_GET_DRIVER(__name)						\
+	ll_entry_get(struct log_driver, __name, log_driver)
 
 /**
  * log_get_cat_name() - Get the name of a category
@@ -390,12 +435,11 @@ enum log_fmt {
 	LOGF_MSG,
 
 	LOGF_COUNT,
-	LOGF_DEFAULT = (1 << LOGF_FUNC) | (1 << LOGF_MSG),
 	LOGF_ALL = 0x3f,
 };
 
 /* Handle the 'log test' command */
-int do_log_test(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[]);
+int do_log_test(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[]);
 
 /**
  * log_add_filter() - Add a new filter to a log device
@@ -425,6 +469,19 @@ int log_add_filter(const char *drv_name, enum log_category_t cat_list[],
  */
 int log_remove_filter(const char *drv_name, int filter_num);
 
+/**
+ * log_device_set_enable() - Enable or disable a log device
+ *
+ * Devices are referenced by their driver, so use LOG_GET_DRIVER(name) to pass
+ * the driver to this function. For example if the driver is declared with
+ * LOG_DRIVER(wibble) then pass LOG_GET_DRIVER(wibble) here.
+ *
+ * @drv: Driver of device to enable
+ * @enable: true to enable, false to disable
+ * @return 0 if OK, -ENOENT if the driver was not found
+ */
+int log_device_set_enable(struct log_driver *drv, bool enable);
+
 #if CONFIG_IS_ENABLED(LOG)
 /**
  * log_init() - Set up the log system ready for use
@@ -438,5 +495,21 @@ static inline int log_init(void)
 	return 0;
 }
 #endif
+
+/**
+ * log_get_default_format() - get default log format
+ *
+ * The default log format is configurable via
+ * CONFIG_LOGF_FILE, CONFIG_LOGF_LINE, CONFIG_LOGF_FUNC.
+ *
+ * Return:	default log format
+ */
+static inline int log_get_default_format(void)
+{
+	return BIT(LOGF_MSG) |
+	       (IS_ENABLED(CONFIG_LOGF_FILE) ? BIT(LOGF_FILE) : 0) |
+	       (IS_ENABLED(CONFIG_LOGF_LINE) ? BIT(LOGF_LINE) : 0) |
+	       (IS_ENABLED(CONFIG_LOGF_FUNC) ? BIT(LOGF_FUNC) : 0);
+}
 
 #endif
