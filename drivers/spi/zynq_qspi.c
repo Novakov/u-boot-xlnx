@@ -6,13 +6,16 @@
  * Xilinx Zynq Quad-SPI(QSPI) controller driver (master mode only)
  */
 
+#include <clk.h>
 #include <common.h>
 #include <dm.h>
+#include <dm/device_compat.h>
+#include <log.h>
 #include <malloc.h>
 #include <spi.h>
 #include <spi_flash.h>
 #include <asm/io.h>
-#include <clk.h>
+#include <linux/bitops.h>
 #include "../mtd/spi/sf_internal.h"
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -310,19 +313,19 @@ static int zynq_qspi_probe(struct udevice *bus)
 
 	ret = clk_get_by_name(bus, "ref_clk", &clk);
 	if (ret < 0) {
-		dev_err(dev, "failed to get clock\n");
+		dev_err(bus, "failed to get clock\n");
 		return ret;
 	}
 
 	clock = clk_get_rate(&clk);
 	if (IS_ERR_VALUE(clock)) {
-		dev_err(dev, "failed to get rate\n");
+		dev_err(bus, "failed to get rate\n");
 		return clock;
 	}
 
 	ret = clk_enable(&clk);
 	if (ret && ret != -ENOSYS) {
-		dev_err(dev, "failed to enable clock\n");
+		dev_err(bus, "failed to enable clock\n");
 		return ret;
 	}
 

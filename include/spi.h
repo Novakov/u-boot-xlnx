@@ -10,10 +10,11 @@
 #define _SPI_H_
 
 #include <common.h>
+#include <linux/bitops.h>
 
 /* SPI mode flags */
-#define SPI_CPHA	BIT(0)			/* clock phase */
-#define SPI_CPOL	BIT(1)			/* clock polarity */
+#define SPI_CPHA	BIT(0)	/* clock phase (1 = SPI_CLOCK_PHASE_SECOND) */
+#define SPI_CPOL	BIT(1)	/* clock polarity (1 = SPI_POLARITY_HIGH) */
 #define SPI_MODE_0	(0|0)			/* (original MicroWire) */
 #define SPI_MODE_1	(0|SPI_CPHA)
 #define SPI_MODE_2	(SPI_CPOL|0)
@@ -30,7 +31,8 @@
 #define SPI_RX_SLOW	BIT(11)			/* receive with 1 wire slow */
 #define SPI_RX_DUAL	BIT(12)			/* receive with 2 wires */
 #define SPI_RX_QUAD	BIT(13)			/* receive with 4 wires */
-#define SPI_RX_OCTAL	BIT(14)
+#define SPI_TX_OCTAL	BIT(14)			/* transmit with 8 wires */
+#define SPI_RX_OCTAL	BIT(15)			/* receive with 8 wires */
 
 #define SPI_3BYTE_MODE	0x0
 #define SPI_4BYTE_MODE	0x1
@@ -46,7 +48,6 @@
 
 #define SPI_DEFAULT_WORDLEN	8
 
-#ifdef CONFIG_DM_SPI
 /* TODO(sjg@chromium.org): Remove this and use max_hz from struct spi_slave */
 struct dm_spi_bus {
 	uint max_hz;
@@ -72,7 +73,38 @@ struct dm_spi_slave_platdata {
 	uint mode;
 };
 
-#endif /* CONFIG_DM_SPI */
+/**
+ * enum spi_clock_phase - indicates  the clock phase to use for SPI (CPHA)
+ *
+ * @SPI_CLOCK_PHASE_FIRST: Data sampled on the first phase
+ * @SPI_CLOCK_PHASE_SECOND: Data sampled on the second phase
+ */
+enum spi_clock_phase {
+	SPI_CLOCK_PHASE_FIRST,
+	SPI_CLOCK_PHASE_SECOND,
+};
+
+/**
+ * enum spi_wire_mode - indicates the number of wires used for SPI
+ *
+ * @SPI_4_WIRE_MODE: Normal bidirectional mode with MOSI and MISO
+ * @SPI_3_WIRE_MODE: Unidirectional version with a single data line SISO
+ */
+enum spi_wire_mode {
+	SPI_4_WIRE_MODE,
+	SPI_3_WIRE_MODE,
+};
+
+/**
+ * enum spi_polarity - indicates the polarity of the SPI bus (CPOL)
+ *
+ * @SPI_POLARITY_LOW: Clock is low in idle state
+ * @SPI_POLARITY_HIGH: Clock is high in idle state
+ */
+enum spi_polarity {
+	SPI_POLARITY_LOW,
+	SPI_POLARITY_HIGH,
+};
 
 /**
  * struct spi_slave - Representation of a SPI slave
