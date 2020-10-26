@@ -10,6 +10,11 @@
  */
 
 #include <common.h>
+#include <log.h>
+#include <dm.h>
+#include <dm/device_compat.h>
+#include <dm/devres.h>
+#include <linux/bitops.h>
 #include <linux/err.h>
 #include <linux/errno.h>
 #include <linux/log2.h>
@@ -54,8 +59,7 @@ static int spi_nor_read_reg(struct spi_nor *nor, u8 code, u8 *val, int len)
 
 	ret = spi_nor_read_write_reg(nor, &op, val);
 	if (ret < 0)
-		dev_dbg(&flash->spimem->spi->dev, "error %d reading %x\n", ret,
-			code);
+		dev_dbg(nor->dev, "error %d reading %x\n", ret, code);
 
 	return ret;
 }
@@ -1566,7 +1570,8 @@ static int spansion_read_cr_quad_enable(struct spi_nor *nor)
 	/* Check current Quad Enable bit value. */
 	ret = read_cr(nor);
 	if (ret < 0) {
-		dev_dbg(dev, "error while reading configuration register\n");
+		dev_dbg(nor->dev,
+			"error while reading configuration register\n");
 		return -EINVAL;
 	}
 
@@ -1578,7 +1583,8 @@ static int spansion_read_cr_quad_enable(struct spi_nor *nor)
 	/* Keep the current value of the Status Register. */
 	ret = read_sr(nor);
 	if (ret < 0) {
-		dev_dbg(dev, "error while reading status register\n");
+		dev_dbg(nor->dev,
+			"error while reading status register\n");
 		return -EINVAL;
 	}
 	sr_cr[0] = ret;
@@ -2770,7 +2776,7 @@ int spi_nor_scan(struct spi_nor *nor)
 	}
 
 	if (nor->addr_width > SPI_NOR_MAX_ADDR_WIDTH) {
-		dev_dbg(dev, "address width is too large: %u\n",
+		dev_dbg(nor->dev, "address width is too large: %u\n",
 			nor->addr_width);
 		return -EINVAL;
 	}
