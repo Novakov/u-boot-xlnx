@@ -244,11 +244,3 @@ int dram_init(void)
 void reset_cpu(ulong addr)
 {
 }
-
-int __maybe_unused board_fit_config_name_match(const char *name)
-{
-	/* Just empty function now - can't decide what to choose */
-	debug("%s: %s\n", __func__, name);
-
-	return -1;
-}
