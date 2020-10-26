@@ -6,12 +6,18 @@
 
 #include <common.h>
 #include <clk.h>
+#include <log.h>
+#include <asm-generic/io.h>
 #include <dm.h>
 #include <fdtdec.h>
 #include <malloc.h>
 #include <reset.h>
 #include <spi.h>
+#include <spi-mem.h>
+#include <dm/device_compat.h>
+#include <linux/err.h>
 #include <linux/errno.h>
+#include <linux/sizes.h>
 #include "cadence_qspi.h"
 
 #define CQSPI_STIG_READ			0
