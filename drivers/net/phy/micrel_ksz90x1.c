@@ -10,6 +10,7 @@
  */
 #include <common.h>
 #include <dm.h>
+#include <env.h>
 #include <errno.h>
 #include <micrel.h>
 #include <phy.h>
@@ -33,9 +34,13 @@
 #define CTRL1000_CONFIG_MASTER		(1 << 11)
 #define CTRL1000_MANUAL_CONFIG		(1 << 12)
 
+#define KSZ9021_PS_TO_REG		120
+
 /* KSZ9031 PHY Registers */
 #define MII_KSZ9031_MMD_ACCES_CTRL	0x0d
 #define MII_KSZ9031_MMD_REG_DATA	0x0e
+
+#define KSZ9031_PS_TO_REG		60
 
 static int ksz90xx_startup(struct phy_device *phydev)
 {
