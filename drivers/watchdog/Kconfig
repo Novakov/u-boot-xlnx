@@ -221,15 +221,6 @@ config WDT_XILINX
 	  Select this to enable Xilinx window watchdog timer, which can be found on
 	  Xilinx Versal Platforms.
 
-config WDT_XILINX
-	bool "Xilinx window watchdog timer support"
-	depends on WDT && ARCH_VERSAL
-	select REGMAP
-	imply WATCHDOG
-	help
-	  Select this to enable Xilinx window watchdog timer, which can be found on
-	  Xilinx Versal Platforms.
-
 config WDT_TANGIER
 	bool "Intel Tangier watchdog timer support"
 	depends on WDT && INTEL_MID
