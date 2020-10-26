@@ -442,29 +442,7 @@ static int spl_fit_append_fdt(struct spl_image_info *spl_image,
 	if (ret < 0)
 		return ret;
 #endif
-	if (CONFIG_IS_ENABLED(LOAD_FIT_APPLY_OVERLAY)) {
-		for (; ; index++) {
-			node = spl_fit_get_image_node(fit, images, FIT_FDT_PROP,
-						      index);
-			if (node < 0) {
-				debug("%s: No additional FDT node\n", __func__);
-				return 0;
-			}
 
-			ret = spl_load_fit_image(info, sector, fit, base_offset,
-						 node, &image_info);
-			if (ret < 0)
-				return ret;
-
-			ret = fdt_overlay_apply_verbose(spl_image->fdt_addr,
-							(void *)image_info.load_addr);
-			if (ret)
-				return ret;
-
-			debug("%s: DT overlay %s applied\n", __func__,
-			      fit_get_name(fit, node, NULL));
-		}
-	}
 	return ret;
 }
 
