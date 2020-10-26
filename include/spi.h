@@ -137,7 +137,7 @@ enum spi_polarity {
  * @flags:		Indication of SPI flags.
  */
 struct spi_slave {
-#ifdef CONFIG_DM_SPI
+#if CONFIG_IS_ENABLED(DM_SPI)
 	struct udevice *dev;	/* struct spi_slave is dev->parentdata */
 	uint max_hz;
 	uint speed;
@@ -273,7 +273,7 @@ void spi_release_bus(struct spi_slave *slave);
 int spi_set_wordlen(struct spi_slave *slave, unsigned int wordlen);
 
 /**
- * SPI transfer
+ * SPI transfer (optional if mem_ops is used)
  *
  * This writes "bitlen" bits out the SPI MOSI port and simultaneously clocks
  * "bitlen" bits in the SPI MISO port.  That's just the way SPI works.
@@ -330,7 +330,12 @@ void spi_flash_copy_mmap(void *data, void *offset, size_t len);
  */
 int spi_cs_is_valid(unsigned int bus, unsigned int cs);
 
-#ifndef CONFIG_DM_SPI
+/*
+ * These names are used in several drivers and these declarations will be
+ * removed soon as part of the SPI DM migration. Drop them if driver model is
+ * enabled for SPI.
+ */
+#if !CONFIG_IS_ENABLED(DM_SPI)
 /**
  * Activate a SPI chipselect.
  * This function is provided by the board code when using a driver
@@ -348,6 +353,7 @@ void spi_cs_activate(struct spi_slave *slave);
  * select to the device identified by "slave".
  */
 void spi_cs_deactivate(struct spi_slave *slave);
+#endif
 
 /**
  * Set transfer speed.
@@ -356,7 +362,6 @@ void spi_cs_deactivate(struct spi_slave *slave);
  * @hz:		The transfer speed
  */
 void spi_set_speed(struct spi_slave *slave, uint hz);
-#endif
 
 /**
  * Write 8 bits, then read 8 bits.
@@ -379,8 +384,6 @@ static inline int spi_w8r8(struct spi_slave *slave, unsigned char byte)
 	ret = spi_xfer(slave, 16, dout, din, SPI_XFER_BEGIN | SPI_XFER_END);
 	return ret < 0 ? ret : din[1];
 }
-
-#ifdef CONFIG_DM_SPI
 
 /**
  * struct spi_cs_info - Information about a bus chip select
@@ -610,7 +613,8 @@ int spi_chip_select(struct udevice *slave);
  * @bus:	SPI bus to search
  * @cs:		Chip select to look for
  * @devp:	Returns the slave device if found
- * @return 0 if found, -ENODEV on error
+ * @return 0 if found, -EINVAL if cs is invalid, -ENODEV if no device attached,
+ *	   other -ve value on error
  */
 int spi_find_chip_select(struct udevice *bus, int cs, struct udevice **devp);
 
