@@ -9,6 +9,7 @@
 #include <zynqmp_tap_delay.h>
 #include <asm/arch/sys_proto.h>
 #include <linux/delay.h>
+#include <mmc.h>
 
 #define SD_DLL_CTRL			0xFF180358
 #define SD_ITAP_DLY			0xFF180314
