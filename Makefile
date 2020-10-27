@@ -860,13 +860,13 @@ else
 BOARD_SIZE_CHECK =
 endif
 
-ifneq ($(CONFIG_SPL_SIZE_LIMIT),0)
+ifneq ($(CONFIG_SPL_SIZE_LIMIT),0x0)
 SPL_SIZE_CHECK = @$(call size_check,$@,$$(tools/spl_size_limit))
 else
 SPL_SIZE_CHECK =
 endif
 
-ifneq ($(CONFIG_TPL_SIZE_LIMIT),0)
+ifneq ($(CONFIG_TPL_SIZE_LIMIT),0x0)
 TPL_SIZE_CHECK = @$(call size_check,$@,$(CONFIG_TPL_SIZE_LIMIT))
 else
 TPL_SIZE_CHECK =
@@ -885,7 +885,7 @@ cmd_static_rela = \
 	tools/relocate-rela $(3) $(4) $$start $$end
 else
 quiet_cmd_static_rela =
-cmd_static_rela =
+cmd_static_rela = true
 endif
 
 # Always append INPUTS so that arch config.mk's can add custom ones
@@ -1309,9 +1309,13 @@ init_sp_bss_offset_check: u-boot.dtb FORCE
 	fi
 endif
 
+shell_cmd = { $(echo-cmd) $(cmd_$(1)); }
+
+quiet_cmd_objcopy_uboot = OBJCOPY $@
+cmd_objcopy_uboot = $(cmd_objcopy) && $(call shell_cmd,static_rela,$<,$@,$(CONFIG_SYS_TEXT_BASE)) || rm -f $@
+
 u-boot-nodtb.bin: u-boot FORCE
-	$(call if_changed,objcopy)
-	$(call cmd,static_rela,$<,$@,$(CONFIG_SYS_TEXT_BASE))
+	$(call if_changed,objcopy_uboot)
 	$(BOARD_SIZE_CHECK)
 
 u-boot.ldr:	u-boot
@@ -1332,6 +1336,7 @@ cmd_binman = $(srctree)/tools/binman/binman $(if $(BINMAN_DEBUG),-D) \
 		-I arch/$(ARCH)/dts -a of-list=$(CONFIG_OF_LIST) \
 		-a atf-bl31-path=${BL31} \
 		-a default-dt=$(default_dt) \
+		-a scp-path=$(SCP) \
 		$(BINMAN_$(@F))
 
 OBJCOPYFLAGS_u-boot.ldr.hex := -I binary -O ihex
@@ -1441,11 +1446,13 @@ else
 MKIMAGEFLAGS_u-boot.itb = -E
 endif
 
+ifdef U_BOOT_ITS
 u-boot.itb: u-boot-nodtb.bin \
 		$(if $(CONFIG_OF_SEPARATE)$(CONFIG_OF_EMBED)$(CONFIG_OF_HOSTFILE),dts/dt.dtb) \
 		$(U_BOOT_ITS) FORCE
 	$(call if_changed,mkfitimage)
 	$(BOARD_SIZE_CHECK)
+endif
 
 u-boot-spl.kwb: u-boot.img spl/u-boot-spl.bin FORCE
 	$(call if_changed,mkimage)
