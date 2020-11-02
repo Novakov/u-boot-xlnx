@@ -2,15 +2,18 @@
 #
 # Copyright (c) 2013 Google, Inc
 
-obj-$(CONFIG_UT_DM) += bus.o
-obj-$(CONFIG_UT_DM) += nop.o
-obj-$(CONFIG_UT_DM) += test-driver.o
-obj-$(CONFIG_UT_DM) += test-fdt.o
 obj-$(CONFIG_UT_DM) += test-main.o
-obj-$(CONFIG_UT_DM) += test-uclass.o
 
 # Tests for particular subsystems - when enabling driver model for a new
 # subsystem you must add sandbox tests here.
+ifeq ($(CONFIG_SPL_BUILD),y)
+obj-$(CONFIG_SPL_OF_PLATDATA) += of_platdata.o
+else
+obj-$(CONFIG_UT_DM) += bus.o
+obj-$(CONFIG_UT_DM) += test-driver.o
+obj-$(CONFIG_UT_DM) += test-fdt.o
+obj-$(CONFIG_UT_DM) += test-uclass.o
+
 obj-$(CONFIG_UT_DM) += core.o
 ifneq ($(CONFIG_SANDBOX),)
 obj-$(CONFIG_ACPIGEN) += acpi.o
@@ -34,7 +37,9 @@ obj-y += irq.o
 obj-$(CONFIG_LED) += led.o
 obj-$(CONFIG_DM_MAILBOX) += mailbox.o
 obj-$(CONFIG_DM_MMC) += mmc.o
+obj-$(CONFIG_CMD_MUX) += mux-cmd.o
 obj-y += fdtdec.o
+obj-$(CONFIG_UT_DM) += nop.o
 obj-y += ofnode.o
 obj-y += ofread.o
 obj-$(CONFIG_OSD) += osd.o
@@ -57,6 +62,8 @@ obj-$(CONFIG_DM_SPI_FLASH) += sf.o
 obj-$(CONFIG_SMEM) += smem.o
 obj-$(CONFIG_DM_SPI) += spi.o
 obj-y += syscon.o
+obj-$(CONFIG_MUX_MMIO) += mux-mmio.o
+obj-$(CONFIG_MULTIPLEXER) += mux-emul.o
 obj-$(CONFIG_DM_USB) += usb.o
 obj-$(CONFIG_DM_PMIC) += pmic.o
 obj-$(CONFIG_DM_REGULATOR) += regulator.o
@@ -85,3 +92,4 @@ ifneq ($(CONFIG_PINMUX),)
 obj-$(CONFIG_PINCONF) += pinmux.o
 endif
 endif
+endif # !SPL

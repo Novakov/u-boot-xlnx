@@ -462,7 +462,7 @@ F:	arch/arm/include/asm/arch-stv0991/
 
 ARM SUNXI
 M:	Jagan Teki <jagan@amarulasolutions.com>
-M:	Maxime Ripard <mripard@kernel.org>
+M:	Andre Przywara <andre.przywara@arm.com>
 S:	Maintained
 T:	git https://gitlab.denx.de/u-boot/custodians/u-boot-sunxi.git
 F:	arch/arm/cpu/armv7/sunxi/
@@ -680,6 +680,7 @@ S:	Maintained
 T:	git https://gitlab.denx.de/u-boot/custodians/u-boot-efi.git
 F:	doc/api/efi.rst
 F:	doc/uefi/*
+F:	drivers/rtc/emul_rtc.c
 F:	include/capitalization.h
 F:	include/charset.h
 F:	include/cp1250.h
@@ -758,6 +759,7 @@ T:	git https://gitlab.denx.de/u-boot/u-boot.git
 F:	common/log*
 F:	cmd/log.c
 F:	doc/develop/logging.rst
+F:	lib/getopt.c
 F:	test/log/
 F:	test/py/tests/test_log.py
 
@@ -940,6 +942,8 @@ S:	Maintained
 T:	git https://gitlab.denx.de/u-boot/custodians/u-boot-riscv.git
 F:	arch/riscv/
 F:	cmd/riscv/
+F:	drivers/timer/andes_plmt_timer.c
+F:	drivers/timer/sifive_clint_timer.c
 F:	tools/prelink-riscv.c
 
 RISC-V KENDRYTE

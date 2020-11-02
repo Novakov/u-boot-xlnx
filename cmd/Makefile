@@ -98,6 +98,7 @@ obj-$(CONFIG_CMD_MISC) += misc.o
 obj-$(CONFIG_CMD_MDIO) += mdio.o
 obj-$(CONFIG_CMD_SLEEP) += sleep.o
 obj-$(CONFIG_CMD_MMC) += mmc.o
+obj-$(CONFIG_CMD_OPTEE_RPMB) += optee_rpmb.o
 obj-$(CONFIG_MP) += mp.o
 obj-$(CONFIG_CMD_MTD) += mtd.o
 obj-$(CONFIG_CMD_MTDPARTS) += mtdparts.o
@@ -105,6 +106,7 @@ obj-$(CONFIG_CMD_CLONE) += clone.o
 ifneq ($(CONFIG_CMD_NAND)$(CONFIG_CMD_SF),)
 obj-y += legacy-mtd-utils.o
 endif
+obj-$(CONFIG_CMD_MUX) += mux.o
 obj-$(CONFIG_CMD_NAND) += nand.o
 obj-$(CONFIG_CMD_NET) += net.o
 obj-$(CONFIG_CMD_NVEDIT_EFI) += nvedit_efi.o

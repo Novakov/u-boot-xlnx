@@ -329,6 +329,24 @@ static int zynq_qspi_probe(struct udevice *bus)
 		return ret;
 	}
 
+	ret = clk_get_by_name(bus, "ref_clk", &clk);
+	if (ret < 0) {
+		dev_err(bus, "failed to get clock\n");
+		return ret;
+	}
+
+	clock = clk_get_rate(&clk);
+	if (IS_ERR_VALUE(clock)) {
+		dev_err(bus, "failed to get rate\n");
+		return clock;
+	}
+
+	ret = clk_enable(&clk);
+	if (ret && ret != -ENOSYS) {
+		dev_err(bus, "failed to enable clock\n");
+		return ret;
+	}
+
 	/* init the zynq spi hw */
 	zynq_qspi_init_hw(priv);
 
