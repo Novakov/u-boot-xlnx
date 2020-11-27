@@ -79,8 +79,10 @@
 #define MODEBITS			0x6
 
 #define QUAD_OUT_READ_CMD		0x6B
+#define QUAD_OUT_READ_4_CMD		0x6C
 #define QUAD_PAGE_PROGRAM_CMD		0x32
 #define DUAL_OUTPUT_FASTRD_CMD		0x3B
+#define DUAL_OUTPUT_FASTRD_4_CMD		0x3C
 
 #define GQSPI_GFIFO_SELECT		BIT(0)
 
@@ -802,9 +804,9 @@ static int zynqmp_qspi_genfifo_fill_rx(struct zynqmp_qspi_priv *priv)
 	gen_fifo_cmd |= GQSPI_GFIFO_RX |
 			GQSPI_GFIFO_DATA_XFR_MASK;
 
-	if (last_cmd == QUAD_OUT_READ_CMD)
+	if ((last_cmd == QUAD_OUT_READ_CMD) || (last_cmd == QUAD_OUT_READ_4_CMD))
 		gen_fifo_cmd |= GQSPI_SPI_MODE_QSPI;
-	else if (last_cmd == DUAL_OUTPUT_FASTRD_CMD)
+	else if ((last_cmd == DUAL_OUTPUT_FASTRD_CMD) || (last_cmd == DUAL_OUTPUT_FASTRD_4_CMD))
 		gen_fifo_cmd |= GQSPI_SPI_MODE_DUAL_SPI;
 	else
 		gen_fifo_cmd |= GQSPI_SPI_MODE_SPI;
